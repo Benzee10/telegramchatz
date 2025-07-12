@@ -3,8 +3,8 @@
 import fetch from 'node-fetch';
 import sharp from 'sharp';
 
-const SIGHTENGINE_API_USER = 'your_user';
-const SIGHTENGINE_API_SECRET = 'your_secret';
+const SIGHTENGINE_API_USER = '1269601779';
+const SIGHTENGINE_API_SECRET = '7TRciA5Uessee3HnSu4AzGdoRSYbw95N';
 
 export default async function handler(req, res) {
   const imageUrl = req.query.url;
