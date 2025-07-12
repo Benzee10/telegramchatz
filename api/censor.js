@@ -1,5 +1,3 @@
-// /api/censor.js
-
 import fetch from 'node-fetch';
 import sharp from 'sharp';
 
@@ -15,41 +13,51 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log("🔗 Image URL:", imageUrl);
+    console.log("🔗 Checking URL:", imageUrl);
 
-    // Step 1: Check nudity via Sightengine
+    // Call Sightengine API
     const checkRes = await fetch(`https://api.sightengine.com/1.0/check/nudity.json?url=${encodeURIComponent(imageUrl)}&models=nudity-2.0&api_user=${SIGHTENGINE_API_USER}&api_secret=${SIGHTENGINE_API_SECRET}`);
     const checkData = await checkRes.json();
 
     console.log("📦 Sightengine response:", checkData);
 
-    if (!checkData || !checkData.media) {
-      console.log("❌ Invalid response from Sightengine");
-      return res.status(500).json({ error: 'API error from Sightengine', data: checkData });
+    if (!checkData || !checkData.media || !checkData.nudity) {
+      return res.status(500).json({ error: 'Invalid response from Sightengine', checkData });
     }
 
-    // Step 2: Download the image
+    const boxes = checkData.nudity.bounding_boxes || [];
+    if (!boxes.length) {
+      console.log("✅ No nudity detected. Returning original image.");
+      const originalRes = await fetch(imageUrl);
+      const originalBuffer = await originalRes.buffer();
+      res.setHeader('Content-Type', 'image/jpeg');
+      return res.send(originalBuffer);
+    }
+
+    // Download the image
     const imgRes = await fetch(imageUrl);
     const buffer = await imgRes.buffer();
     let image = sharp(buffer);
     const meta = await image.metadata();
 
-    // Step 3: Apply blur to detected regions
-    const sensitiveBoxes = checkData.nudity.bounding_boxes || [];
+    console.log(`🖼 Image size: ${meta.width}x${meta.height}`);
 
-    console.log("🟨 Boxes to censor:", sensitiveBoxes);
-
-    for (const box of sensitiveBoxes) {
+    for (const box of boxes) {
       const { x1, y1, x2, y2 } = box;
-      const left = Math.floor(x1 * meta.width);
-      const top = Math.floor(y1 * meta.height);
-      const width = Math.floor((x2 - x1) * meta.width);
-      const height = Math.floor((y2 - y1) * meta.height);
 
-      console.log(`🛠️ Censoring box: left=${left}, top=${top}, width=${width}, height=${height}`);
+      const left = Math.max(0, Math.floor(x1 * meta.width));
+      const top = Math.max(0, Math.floor(y1 * meta.height));
+      const width = Math.min(meta.width - left, Math.floor((x2 - x1) * meta.width));
+      const height = Math.min(meta.height - top, Math.floor((y2 - y1) * meta.height));
 
-      const blurredRegion = await image.extract({ left, top, width, height }).blur(50).toBuffer();
-      image = image.composite([{ input: blurredRegion, left, top }]);
+      console.log(`🔲 Censoring box: left=${left}, top=${top}, width=${width}, height=${height}`);
+
+      try {
+        const blur = await image.extract({ left, top, width, height }).blur(50).toBuffer();
+        image = image.composite([{ input: blur, left, top }]);
+      } catch (err) {
+        console.error("⚠️ Failed to apply blur:", err);
+      }
     }
 
     const finalImage = await image.jpeg().toBuffer();
@@ -57,7 +65,7 @@ export default async function handler(req, res) {
     res.send(finalImage);
 
   } catch (err) {
-    console.error("❌ Error:", err);
-    res.status(500).json({ error: err.message });
+    console.error("❌ Server Error:", err);
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
   }
 }
