@@ -48,3 +48,5 @@ export default async function handler(req, res) {
   res.setHeader('Content-Type', 'image/jpeg');
   res.send(finalImage);
 }
+console.log('Image URL:', imageUrl);
+console.log('Sightengine Response:', checkData);
