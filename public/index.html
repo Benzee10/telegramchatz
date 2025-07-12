@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nude Censorship Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #121212;
+      color: #fff;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    input, button {
+      padding: 10px;
+      width: 90%;
+      max-width: 400px;
+      margin: 10px auto;
+      display: block;
+      border-radius: 5px;
+      border: none;
+      font-size: 1rem;
+    }
+
+    input {
+      background: #fff;
+      color: #000;
+    }
+
+    button {
+      background: #0070f3;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0059c1;
+    }
+
+    img {
+      max-width: 100%;
+      margin-top: 20px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Image Censorship Tool</h1>
+  <p>Paste an image URL below to auto-censor nudity.</p>
+
+  <input type="text" id="imageUrl" placeholder="Enter image URL..." />
+  <button onclick="censorImage()">Censor Image</button>
+
+  <div id="previewSection" style="display:none;">
+    <h3>Original Image</h3>
+    <img id="originalPreview" alt="Original Image" />
+  </div>
+
+  <div id="resultSection" style="display:none;">
+    <h3>Censored Result</h3>
+    <img id="censoredImage" alt="Censored Image" />
+    <a id="downloadLink" href="#" download="censored.jpg">Download Censored Image</a>
+  </div>
+
+  <script>
+    async function censorImage() {
+      const url = document.getElementById('imageUrl').value;
+      if (!url) return alert("Please enter an image URL");
+
+      // Show original
+      const preview = document.getElementById('originalPreview');
+      preview.src = url;
+      document.getElementById('previewSection').style.display = 'block';
+
+      try {
+        const res = await fetch(`/api/censor?url=${encodeURIComponent(url)}`);
+        if (!res.ok) throw new Error('Failed to process image.');
+
+        const blob = await res.blob();
+        const censoredUrl = URL.createObjectURL(blob);
+
+        const censoredImg = document.getElementById('censoredImage');
+        censoredImg.src = censoredUrl;
+
+        const link = document.getElementById('downloadLink');
+        link.href = censoredUrl;
+
+        document.getElementById('resultSection').style.display = 'block';
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
