@@ -1,46 +1,47 @@
 import fetch from 'node-fetch';
 import sharp from 'sharp';
+import FormData from 'form-data';
 
 const SIGHTENGINE_API_USER = '1269601779';
-const SIGHTENGINE_API_SECRET = '7TRciA5Uessee3HnSu4AzGdoRSYbw95N.';
+const SIGHTENGINE_API_SECRET = '7TRciA5Uessee3HnSu4AzGdoRSYbw95N';
 
 export default async function handler(req, res) {
   const imageUrl = req.query.url;
 
   if (!imageUrl) {
-    console.log("❌ No image URL provided.");
     return res.status(400).json({ error: 'Missing ?url=' });
   }
 
   try {
-    console.log("🔗 Checking URL:", imageUrl);
+    console.log("🔗 Fetching image:", imageUrl);
+    const imageResponse = await fetch(imageUrl);
+    const buffer = await imageResponse.buffer();
 
-    // Call Sightengine API
-    const checkRes = await fetch(`https://api.sightengine.com/1.0/check/nudity.json?url=${encodeURIComponent(imageUrl)}&models=nudity-2.0&api_user=${SIGHTENGINE_API_USER}&api_secret=${SIGHTENGINE_API_SECRET}`);
-    const checkData = await checkRes.json();
+    // Step 1: Prepare form for upload
+    const form = new FormData();
+    form.append('media', buffer, { filename: 'image.jpg' });
+    form.append('models', 'nudity-2.0');
+    form.append('api_user', SIGHTENGINE_API_USER);
+    form.append('api_secret', SIGHTENGINE_API_SECRET);
 
+    // Step 2: Upload to Sightengine
+    const sightRes = await fetch('https://api.sightengine.com/1.0/check.json', {
+      method: 'POST',
+      body: form
+    });
+
+    const checkData = await sightRes.json();
     console.log("📦 Sightengine response:", checkData);
 
-    if (!checkData || !checkData.media || !checkData.nudity) {
-      return res.status(500).json({ error: 'Invalid response from Sightengine', checkData });
+    if (checkData.status !== 'success') {
+      return res.status(500).json({ error: 'Sightengine failed', details: checkData });
     }
 
     const boxes = checkData.nudity.bounding_boxes || [];
-    if (!boxes.length) {
-      console.log("✅ No nudity detected. Returning original image.");
-      const originalRes = await fetch(imageUrl);
-      const originalBuffer = await originalRes.buffer();
-      res.setHeader('Content-Type', 'image/jpeg');
-      return res.send(originalBuffer);
-    }
 
-    // Download the image
-    const imgRes = await fetch(imageUrl);
-    const buffer = await imgRes.buffer();
+    // Step 3: Blur nude parts
     let image = sharp(buffer);
     const meta = await image.metadata();
-
-    console.log(`🖼 Image size: ${meta.width}x${meta.height}`);
 
     for (const box of boxes) {
       const { x1, y1, x2, y2 } = box;
@@ -50,22 +51,22 @@ export default async function handler(req, res) {
       const width = Math.min(meta.width - left, Math.floor((x2 - x1) * meta.width));
       const height = Math.min(meta.height - top, Math.floor((y2 - y1) * meta.height));
 
-      console.log(`🔲 Censoring box: left=${left}, top=${top}, width=${width}, height=${height}`);
+      console.log(`🔲 Censoring region: ${left},${top},${width},${height}`);
 
       try {
         const blur = await image.extract({ left, top, width, height }).blur(50).toBuffer();
         image = image.composite([{ input: blur, left, top }]);
       } catch (err) {
-        console.error("⚠️ Failed to apply blur:", err);
+        console.error("⚠️ Failed to apply blur:", err.message);
       }
     }
 
-    const finalImage = await image.jpeg().toBuffer();
+    const censoredBuffer = await image.jpeg().toBuffer();
     res.setHeader('Content-Type', 'image/jpeg');
-    res.send(finalImage);
+    res.send(censoredBuffer);
 
   } catch (err) {
-    console.error("❌ Server Error:", err);
+    console.error("❌ ERROR:", err.message);
     res.status(500).json({ error: 'Internal Server Error', message: err.message });
   }
 }
