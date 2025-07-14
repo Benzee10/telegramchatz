@@ -1,8 +1,36 @@
-{
-  "functions": {
-    "api/censor.js": {
-      "maxDuration": 10,
-      "memory": 1024
-    }
-  }
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TikTok Style Viewer</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+
+  <div id="video-container"></div>
+
+  <!-- Floating Chat & Register Buttons -->
+  <div class="floating-buttons">
+    <a id="chatBtn" href="https://redirecting-kappa.vercel.app/" target="_blank">💬 Chat Now</a>
+    <a id="registerBtn" href="https://redirecting-kappa.vercel.app/" target="_blank">📝 Register</a>
+  </div>
+
+  <!-- Popup Modal -->
+  <div id="popup" class="popup">
+    <div class="popup-content">
+      <h3>Join Our Secret Channels 🔞</h3>
+      <p>Get exclusive videos via:</p>
+      <div class="btn-group">
+        <a href="https://whatsapp.com/channel/0029VaMsUAp7tkjI8KcaRn10" class="btn whatsapp">WhatsApp</a>
+        <a href="https://t.me/Xibabes" class="btn telegram">Telegram</a>
+      </div>
+      <span id="closePopup" class="close-btn">&times;</span>
+    </div>
+  </div>
+
+  <script src="iframe.js"></script>
+  <script src="script.js"></script>
+</body>
+          </html>
