@@ -7,13 +7,13 @@ body {
 }
 
 #video-container {
-  height: 70%;
+  height: 100%;
   overflow-y: scroll;
   scroll-snap-type: y mandatory;
 }
 
 .iframe-wrapper {
-  height: 100%;
+  height: 400;
   scroll-snap-align: start;
   position: relative;
 }
